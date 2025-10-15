@@ -25,7 +25,10 @@ func NewTCPPeer(conn net.Conn, outbound bool) *TCPPeer {
 type TCPTransport struct {
 	listenAddr string
 	listener   net.Listener
+	shakeHands HandshakerFunc
+	decoder    Decoder
 
+	// mutex its a lock to protect the peer map
 	mu    sync.Mutex
 	peers map[net.Addr]Peer
 }
@@ -33,6 +36,7 @@ type TCPTransport struct {
 func NewTCPTransport(listenAddr string) *TCPTransport {
 	return &TCPTransport{
 		listenAddr: listenAddr,
+		shakeHands: NOPHandshakerFunc,
 	}
 }
 
@@ -59,7 +63,24 @@ func (t *TCPTransport) startAcceptLoop() error {
 	}
 }
 
+type Message struct {
+}
+
 func (t *TCPTransport) handleConn(conn net.Conn) {
 	peer := NewTCPPeer(conn, true)
-	fmt.Printf("Accepted connection from %s\n", peer.conn.RemoteAddr().String())
+
+	if err := t.shakeHands(peer); err != nil {
+		fmt.Printf("Handshake error: %s", err)
+		conn.Close()
+		return
+	}
+
+	// Read loop
+	msg := &Message{}
+	for {
+		if err := t.decoder.Decode(conn, msg); err != nil {
+			fmt.Printf("Decode error: %s", err)
+			continue
+		}
+	}
 }
