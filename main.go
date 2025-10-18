@@ -5,7 +5,14 @@ import (
 )
 
 func main() {
-	tr := p2p.NewTCPTransport(":3000")
+	// Create a new TCP transport listening on port 3000
+	// In a real application, you would implement proper handshake
+	// and decoding logic.
+	tcpOpts := p2p.TCPTransportOpts{
+		HandshakeFunc: p2p.NOPHandshakerFunc,
+		Decoder:       &p2p.DefaultDecoder{},
+	}
+	tr := p2p.NewTCPTransport(":3000", tcpOpts)
 
 	if err := tr.ListenAndAccept(); err != nil {
 		panic(err)

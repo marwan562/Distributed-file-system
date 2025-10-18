@@ -2,6 +2,7 @@ package p2p
 
 // Peer represents a node in the P2P network.
 type Peer interface {
+	Close() error
 }
 
 // Transport defines the methods for a transport mechanism.
@@ -10,4 +11,5 @@ type Peer interface {
 // from ("p2p/tcp_transport.go")
 type Transport interface {
 	ListenAndAccept() error
+	Consume() <-chan *RPC
 }

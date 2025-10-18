@@ -22,21 +22,32 @@ func NewTCPPeer(conn net.Conn, outbound bool) *TCPPeer {
 	}
 }
 
+type TCPTransportOpts struct {
+	HandshakeFunc HandshakerFunc
+	Decoder       Decoder
+}
+
 type TCPTransport struct {
+	TCPTransportOpts
 	listenAddr string
 	listener   net.Listener
-	shakeHands HandshakerFunc
-	decoder    Decoder
+	rpcch      chan *RPC
 
 	// mutex its a lock to protect the peer map
 	mu    sync.Mutex
 	peers map[net.Addr]Peer
 }
 
-func NewTCPTransport(listenAddr string) *TCPTransport {
+// Consume returns a channel to consume incoming RPC messages.
+func (t *TCPTransport) Consume() <-chan *RPC {
+	return t.rpcch
+}
+
+func NewTCPTransport(listenAddr string, opts TCPTransportOpts) *TCPTransport {
 	return &TCPTransport{
-		listenAddr: listenAddr,
-		shakeHands: NOPHandshakerFunc,
+		listenAddr:       listenAddr,
+		TCPTransportOpts: opts,
+		rpcch:            make(chan *RPC),
 	}
 }
 
@@ -63,24 +74,32 @@ func (t *TCPTransport) startAcceptLoop() error {
 	}
 }
 
-type Message struct {
-}
-
 func (t *TCPTransport) handleConn(conn net.Conn) {
+	defer conn.Close()
+	// Perform handshake
 	peer := NewTCPPeer(conn, true)
 
-	if err := t.shakeHands(peer); err != nil {
+	if err := t.HandshakeFunc(peer); err != nil {
 		fmt.Printf("Handshake error: %s", err)
 		conn.Close()
 		return
 	}
 
+	// handle the receive data from peer
+	t.handleReceiveData(conn)
+}
+
+// handleReceiveData handles incoming data from the connection.
+func (t *TCPTransport) handleReceiveData(conn net.Conn) {
+	defer conn.Close()
 	// Read loop
-	msg := &Message{}
+	rpc := &RPC{}
 	for {
-		if err := t.decoder.Decode(conn, msg); err != nil {
+		if err := t.Decoder.Decode(conn, rpc); err != nil {
 			fmt.Printf("Decode error: %s", err)
-			continue
+			return
 		}
+		rpc.From = conn.RemoteAddr()
+		fmt.Printf("Received message: %s\n", string(rpc.Payload))
 	}
 }
