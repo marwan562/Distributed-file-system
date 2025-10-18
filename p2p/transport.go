@@ -2,7 +2,7 @@ package p2p
 
 // Peer represents a node in the P2P network.
 type Peer interface {
-	Close() error
+	Close(*TCPPeer) error
 }
 
 // Transport defines the methods for a transport mechanism.

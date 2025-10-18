@@ -43,6 +43,11 @@ func (t *TCPTransport) Consume() <-chan *RPC {
 	return t.rpcch
 }
 
+// Close closes the TCP transport.
+func (p *TCPPeer) Close() error {
+	return p.conn.Close()
+}
+
 func NewTCPTransport(listenAddr string, opts TCPTransportOpts) *TCPTransport {
 	return &TCPTransport{
 		listenAddr:       listenAddr,
