@@ -15,13 +15,6 @@ type TCPPeer struct {
 	outbound bool
 }
 
-func NewTCPPeer(conn net.Conn, outbound bool) *TCPPeer {
-	return &TCPPeer{
-		conn:     conn,
-		outbound: outbound,
-	}
-}
-
 type TCPTransportOpts struct {
 	HandshakeFunc HandshakerFunc
 	Decoder       Decoder
@@ -38,15 +31,21 @@ type TCPTransport struct {
 	peers map[net.Addr]Peer
 }
 
-// Consume returns a channel to consume incoming RPC messages.
-func (t *TCPTransport) Consume() <-chan *RPC {
-	return t.rpcch
-}
-
+// * Peer * 
 // Close closes the TCP transport.
 func (p *TCPPeer) Close() error {
 	return p.conn.Close()
 }
+
+// NewTCPPeer returns  new TCPPeer instance.
+func NewTCPPeer(conn net.Conn, outbound bool) *TCPPeer {
+	return &TCPPeer{
+		conn:     conn,
+		outbound: outbound,
+	}
+}
+
+// * Transport * 
 
 func NewTCPTransport(listenAddr string, opts TCPTransportOpts) *TCPTransport {
 	return &TCPTransport{
@@ -54,6 +53,11 @@ func NewTCPTransport(listenAddr string, opts TCPTransportOpts) *TCPTransport {
 		TCPTransportOpts: opts,
 		rpcch:            make(chan *RPC),
 	}
+}
+
+// Consume returns a channel to consume incoming RPC messages.
+func (t *TCPTransport) Consume() <-chan *RPC {
+	return t.rpcch
 }
 
 // ListenAndAccept starts listening on the specified TCP address and accepts incoming connections.
