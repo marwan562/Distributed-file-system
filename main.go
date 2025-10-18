@@ -13,10 +13,13 @@ func main() {
 		Decoder:       &p2p.DefaultDecoder{},
 	}
 	tr := p2p.NewTCPTransport(":3000", tcpOpts)
-
+	rpcch := tr.Consume()
 	if err := tr.ListenAndAccept(); err != nil {
 		panic(err)
 	}
+	for {
+		rpc := <-rpcch
+		println("RPC message:", string(rpc.Payload))
+	}
 
-	select {}
 }

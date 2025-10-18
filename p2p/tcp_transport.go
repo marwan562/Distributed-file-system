@@ -24,14 +24,14 @@ type TCPTransport struct {
 	TCPTransportOpts
 	listenAddr string
 	listener   net.Listener
-	rpcch      chan *RPC
+	rpcch      chan RPC
 
 	// mutex its a lock to protect the peer map
 	mu    sync.Mutex
 	peers map[net.Addr]Peer
 }
 
-// * Peer * 
+// * Peer *
 // Close closes the TCP transport.
 func (p *TCPPeer) Close() error {
 	return p.conn.Close()
@@ -45,18 +45,18 @@ func NewTCPPeer(conn net.Conn, outbound bool) *TCPPeer {
 	}
 }
 
-// * Transport * 
+// * Transport *
 
 func NewTCPTransport(listenAddr string, opts TCPTransportOpts) *TCPTransport {
 	return &TCPTransport{
 		listenAddr:       listenAddr,
 		TCPTransportOpts: opts,
-		rpcch:            make(chan *RPC),
+		rpcch:            make(chan RPC),
 	}
 }
 
 // Consume returns a channel to consume incoming RPC messages.
-func (t *TCPTransport) Consume() <-chan *RPC {
+func (t *TCPTransport) Consume() <-chan RPC {
 	return t.rpcch
 }
 
@@ -102,13 +102,14 @@ func (t *TCPTransport) handleConn(conn net.Conn) {
 func (t *TCPTransport) handleReceiveData(conn net.Conn) {
 	defer conn.Close()
 	// Read loop
-	rpc := &RPC{}
+	rpc := RPC{}
 	for {
-		if err := t.Decoder.Decode(conn, rpc); err != nil {
+		if err := t.Decoder.Decode(conn, &rpc); err != nil {
 			fmt.Printf("Decode error: %s", err)
 			return
 		}
-		rpc.From = conn.RemoteAddr()
+		// Send the RPC to the channel
+		t.rpcch <- rpc
 		fmt.Printf("Received message: %s\n", string(rpc.Payload))
 	}
 }
